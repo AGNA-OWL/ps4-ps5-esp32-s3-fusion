@@ -106,13 +106,17 @@ pio run -t upload      # 上传固件
 本地已用 PlatformIO 6.2.0 + `espressif32@6.7.0` 编译验证通过：固件约 **965 KB / 1.5 MB**，LittleFS 镜像按分区填满 **13 MB**，数据实际占用约 6.5 MB。
 
 > Windows 用户名含中文时，PlatformIO 可能因为工具链路径编码报 `Arduino.h: No such file or directory`。
-> 可建一个 ASCII 路径的目录联接再编译：
+> 建议把 core 目录（默认在 `%USERPROFILE%\.platformio`，工具链缓存约 4 GB）整体放到 D 盘的纯 ASCII 路径，
+> 既避开中文路径问题，也节省 C 盘空间：
 >
 > ```powershell
-> New-Item -ItemType Junction -Path C:\pio -Target "$env:USERPROFILE\.platformio"
-> $env:PLATFORMIO_CORE_DIR = "C:\pio"
+> Move-Item "$env:USERPROFILE\.platformio" D:\.platformio
+> New-Item -ItemType Junction -Path "$env:USERPROFILE\.platformio" -Target D:\.platformio
+> $env:PLATFORMIO_CORE_DIR = "D:\.platformio"
 > pio run
 > ```
+>
+> 若之前已用 `C:\pio` 联接，把它重新指向 `D:\.platformio` 即可保持原有编译命令不变。
 
 ---
 
