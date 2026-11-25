@@ -135,7 +135,26 @@ pio run -t upload      # 上传固件
 
 ---
 
-## 6. 已知限制
+## 6. 推送到你自己的 GitHub 仓库
+
+本地仓库已经准备好了一个初始提交。如果你刚注册 GitHub，按下面做：
+
+1. 打开 <https://github.com/new>。
+2. Repository name 填 `ps4-ps5-s3-fusion`（或任意名字）。
+3. 选择 Public 或 Private。
+4. **不要**勾选 “Add a README file”、`.gitignore` 或 license，保持仓库为空。
+5. 点 Create repository，复制页面上的地址，例如
+   `https://github.com/你的用户名/ps4-ps5-s3-fusion.git`。
+6. 把地址发给助手，或自己在项目目录执行：
+
+   ```bash
+   git remote add origin https://github.com/你的用户名/ps4-ps5-s3-fusion.git
+   git push -u origin main
+   ```
+
+如果本机未登录 GitHub，推送时会要求凭据。可以用 `gh auth login` 登录，或在 GitHub → Settings → Developer settings → Personal access tokens 生成 token，在提示时把它当密码使用（勾选 `repo` 权限）。
+
+## 7. 已知限制
 
 - **PPPwn 不在范围内**：9.60 / 10.x / 11.00 需要网线 PPPoE，不是访问网页。
 - 越狱不持久；主机重启后重新触发。
@@ -147,7 +166,7 @@ pio run -t upload      # 上传固件
 
 ---
 
-## 7. 来源与许可
+## 8. 来源与许可
 
 本工程原始代码的许可证见 [LICENSE](LICENSE)（MIT）。以下上游资源由脚本运行时下载，**不随本仓库分发**：
 
