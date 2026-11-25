@@ -103,6 +103,8 @@ pio run -t upload      # 上传固件
 
 也可以用网页烧录器刷入 `merge_bin` 后的整片镜像（自行用 esptool 合并 bootloader / partitions / app / littlefs）。
 
+本地已用 PlatformIO 6.2.0 + `espressif32@6.7.0` 编译验证通过：固件约 **965 KB / 1.5 MB**，LittleFS 镜像按分区填满 **13 MB**，数据实际占用约 6.5 MB。
+
 ---
 
 ## 5. 使用
