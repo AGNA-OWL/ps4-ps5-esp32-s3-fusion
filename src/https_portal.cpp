@@ -69,7 +69,7 @@ static esp_err_t handleFile(httpd_req_t *req)
             (uri.indexOf("/ps5") >= 0 || uri.indexOf("/ps4") >= 0))
         {
             httpd_resp_set_status(req, "302 Found");
-            httpd_resp_set_hdr(req, "Location", "/");
+            httpd_resp_set_hdr(req, "Location", PORTAL_REDIRECT_URL);
             httpd_resp_set_hdr(req, "Connection", "close");
             httpd_resp_send(req, nullptr, 0);
             return ESP_FAIL;
@@ -89,9 +89,17 @@ static esp_err_t handleFile(httpd_req_t *req)
     }
 
     setNoCacheHeaders(req);
+    String mime = portalMimeType(resolved.logicalPath);
+    if (portalIsManifest(mime))
+    {
+        String manifest = portalBuildManifest(file);
+        file.close();
+        httpd_resp_set_type(req, "text/cache-manifest; charset=utf-8");
+        return httpd_resp_send(req, manifest.c_str(), manifest.length());
+    }
     if (resolved.gzip)
         httpd_resp_set_hdr(req, "Content-Encoding", "gzip");
-    httpd_resp_set_type(req, portalMimeType(resolved.logicalPath).c_str());
+    httpd_resp_set_type(req, mime.c_str());
 
     char buffer[1024];
     while (file.available())
@@ -107,6 +115,29 @@ static esp_err_t handleFile(httpd_req_t *req)
     return httpd_resp_send_chunk(req, nullptr, 0);
 }
 
+// PS5 checks for internet access via POST/GET /networktest/* before loading
+// the user guide. Upstream answers "OK" instead of letting it hit a 404.
+static esp_err_t handleNetworkTest(httpd_req_t *req)
+{
+    char buffer[256];
+    int remaining = req->content_len;
+    while (remaining > 0)
+    {
+        int len = httpd_req_recv(req, buffer, min(remaining, (int)sizeof(buffer)));
+        if (len <= 0)
+        {
+            if (len == HTTPD_SOCK_ERR_TIMEOUT)
+                continue;
+            return ESP_FAIL;
+        }
+        remaining -= len;
+    }
+
+    setNoCacheHeaders(req);
+    httpd_resp_set_type(req, "text/plain");
+    return httpd_resp_send(req, "OK", HTTPD_RESP_USE_STRLEN);
+}
+
 bool portalHttpsBegin()
 {
     httpd_ssl_config_t config = HTTPD_SSL_CONFIG_DEFAULT();
@@ -117,7 +148,7 @@ bool portalHttpsBegin()
     config.prvtkey_pem = server_key;
     config.prvtkey_len = server_key_len;
     config.httpd.uri_match_fn = httpd_uri_match_wildcard;
-    config.httpd.max_uri_handlers = 12;
+    config.httpd.max_uri_handlers = 14;
 
     esp_err_t err = httpd_ssl_start(&httpsServer, &config);
     if (err != ESP_OK)
@@ -158,6 +189,14 @@ bool portalHttpsBegin()
         .uri = "/netstart/icst", .method = HTTP_GET,
         .handler = handleFixed, .user_ctx = nullptr
     };
+    httpd_uri_t netTestPostUri = {
+        .uri = "/networktest/*", .method = HTTP_POST,
+        .handler = handleNetworkTest, .user_ctx = nullptr
+    };
+    httpd_uri_t netTestGetUri = {
+        .uri = "/networktest/*", .method = HTTP_GET,
+        .handler = handleNetworkTest, .user_ctx = nullptr
+    };
     httpd_uri_t fileUri = {
         .uri = "/*", .method = HTTP_GET,
         .handler = handleFile, .user_ctx = nullptr
@@ -165,7 +204,8 @@ bool portalHttpsBegin()
 
     const httpd_uri_t *handlers[] = {
         &fixedUri, &generateUri, &genUri, &hotspotUri,
-        &connectUri, &ncsiUri, &redirectUri, &netstartUri, &fileUri
+        &connectUri, &ncsiUri, &redirectUri, &netstartUri,
+        &netTestPostUri, &netTestGetUri, &fileUri
     };
 
     for (size_t i = 0; i < sizeof(handlers) / sizeof(handlers[0]); i++)

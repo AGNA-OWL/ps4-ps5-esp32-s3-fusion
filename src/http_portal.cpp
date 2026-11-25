@@ -180,6 +180,15 @@ static void handleProbe()
 static void handleNotFound()
 {
     String path = webServer.uri();
+
+    // PS5's connectivity check must not fall through to a 404.
+    if (path.startsWith("/networktest/"))
+    {
+        setNoCache();
+        webServer.send(200, "text/plain", "OK");
+        return;
+    }
+
     if (portalIsProbePath(path))
     {
         handleProbe();
@@ -193,7 +202,7 @@ static void handleNotFound()
         if (path.startsWith("/document/") &&
             (path.indexOf("/ps5") >= 0 || path.indexOf("/ps4") >= 0))
         {
-            webServer.sendHeader("Location", "/", true);
+            webServer.sendHeader("Location", PORTAL_REDIRECT_URL, true);
             webServer.send(302, "text/plain", "");
             return;
         }
@@ -210,9 +219,17 @@ static void handleNotFound()
     }
 
     setNoCache();
+    String mime = portalMimeType(file.logicalPath);
+    if (portalIsManifest(mime))
+    {
+        String manifest = portalBuildManifest(handle);
+        handle.close();
+        webServer.send(200, "text/cache-manifest; charset=utf-8", manifest);
+        return;
+    }
     if (file.gzip)
         webServer.sendHeader("Content-Encoding", "gzip");
-    webServer.streamFile(handle, portalMimeType(file.logicalPath));
+    webServer.streamFile(handle, mime);
     handle.close();
 }
 

@@ -1,6 +1,42 @@
 #include "portal_common.h"
 #include <LittleFS.h>
 
+namespace
+{
+char manifestVersion[17] = "0000000000000000";
+}
+
+void portalSeedManifestVersion()
+{
+    snprintf(manifestVersion, sizeof(manifestVersion), "%08lx%08lx",
+             (unsigned long)esp_random(), (unsigned long)esp_random());
+    Serial.printf("[MANIFEST] boot version=%s\n", manifestVersion);
+}
+
+// Preserve the first line ("CACHE MANIFEST"), inject a random VERSION line so
+// WebKit treats the cache as new, and drop any stale VERSION line from disk.
+String portalBuildManifest(File &file)
+{
+    String out = file.readStringUntil('\n');
+    out += '\n';
+    out += "# VERSION ";
+    out += manifestVersion;
+    out += '\n';
+
+    while (file.available())
+    {
+        String line = file.readStringUntil('\n');
+        String comment = line;
+        comment.trim();
+        if (comment == "# VERSION" || comment.startsWith("# VERSION ") ||
+            comment.startsWith("# VERSION\t"))
+            continue;
+        out += line;
+        out += '\n';
+    }
+    return out;
+}
+
 String portalMimeType(const String &path)
 {
     String lower = path;

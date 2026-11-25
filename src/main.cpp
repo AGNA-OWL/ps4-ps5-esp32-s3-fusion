@@ -3,6 +3,7 @@
 #include <WiFi.h>
 
 #include "portal_config.h"
+#include "portal_common.h"
 #include "dns_portal.h"
 #include "http_portal.h"
 #include "https_portal.h"
@@ -55,6 +56,7 @@ void setup()
                   ESP.getFlashChipSize() / 1024 / 1024, ESP.getFreeHeap());
 
     mountStorage();
+    portalSeedManifestVersion();
     startAccessPoint();
 
     portalDns.begin(WiFi.softAPIP());

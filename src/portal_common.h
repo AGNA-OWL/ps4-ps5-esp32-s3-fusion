@@ -17,3 +17,8 @@ bool portalIsProbePath(const String &path);
 String portalNormalizePath(const String &uri);
 PortalResolvedFile portalResolveFile(const String &uri);
 String portalJsonEscape(const String &value);
+
+// A fresh random version is generated on every boot so that consoles refresh
+// their AppCache after the LittleFS contents are updated.
+void portalSeedManifestVersion();
+String portalBuildManifest(File &file);

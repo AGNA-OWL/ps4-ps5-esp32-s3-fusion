@@ -18,6 +18,10 @@
 
 #define PORTAL_NO_CACHE       "no-store, no-cache, must-revalidate, max-age=0"
 
+// PS5 user-guide requests arrive over HTTPS with a self-signed certificate.
+// Redirect them to plain HTTP so AppCache / WebKit does not stay on TLS.
+#define PORTAL_REDIRECT_URL   "http://192.168.4.1/"
+
 // The malformed exFAT image exposed over USB-OTG is required by the PS4 9.00
 // exfathax trigger. ESP32-S3 native USB (GPIO19/20) must be wired to the port
 // the console sees. Set to 0 to build a pure-WiFi host.
