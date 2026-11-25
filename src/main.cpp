@@ -21,10 +21,8 @@ static void mountStorage()
         }
     }
 
-    size_t used = 0;
-    size_t total = 0;
-    LittleFS.info(used, total);
-    Serial.printf("[FS] LittleFS ready: %u / %u bytes used\n", used, total);
+    Serial.printf("[FS] LittleFS ready: %u / %u bytes used\n",
+                  LittleFS.usedBytes(), LittleFS.totalBytes());
 }
 
 static void startAccessPoint()

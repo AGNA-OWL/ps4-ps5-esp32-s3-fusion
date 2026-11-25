@@ -48,13 +48,8 @@ static String safeFileName(const String &input)
 static void handleStatus()
 {
     setNoCache();
-    size_t used = 0;
-    size_t total = 0;
-    if (LittleFS.info(used, total) != true)
-    {
-        used = 0;
-        total = 0;
-    }
+    size_t used = LittleFS.usedBytes();
+    size_t total = LittleFS.totalBytes();
 
     String json = "{";
     json += "\"device\":\"ESP32-S3 N16R8\",";
@@ -101,21 +96,25 @@ static void handleFiles()
     webServer.send(200, "application/json; charset=utf-8", json);
 }
 
-static void handleUploadData(const String &filename, size_t index,
-                             uint8_t *data, size_t len, bool final)
+static void handleUploadData()
 {
-    if (index == 0)
+    HTTPUpload &upload = webServer.upload();
+
+    if (upload.status == UPLOAD_FILE_START)
     {
-        uploadName = safeFileName(filename);
+        uploadName = safeFileName(upload.filename);
         String path = String(PORTAL_PAYLOAD_DIR) + "/" + uploadName;
         uploadFile = LittleFS.open(path, "w");
         uploadSucceeded = uploadFile ? true : false;
     }
-
-    if (uploadFile && len > 0)
-        uploadSucceeded = (uploadFile.write(data, len) == len) && uploadSucceeded;
-
-    if (final)
+    else if (upload.status == UPLOAD_FILE_WRITE)
+    {
+        if (uploadFile && upload.currentSize > 0)
+            uploadSucceeded =
+                (uploadFile.write(upload.buf, upload.currentSize) == upload.currentSize) &&
+                uploadSucceeded;
+    }
+    else if (upload.status == UPLOAD_FILE_END)
     {
         if (uploadFile)
             uploadFile.close();
@@ -221,7 +220,8 @@ void portalHttpBegin()
 {
     webServer.on("/api/status", HTTP_GET, handleStatus);
     webServer.on("/api/files", HTTP_GET, handleFiles);
-    webServer.on("/upload", HTTP_POST, handleUpload, handleUploadData);
+    webServer.on("/upload", HTTP_POST, handleUpload);
+    webServer.onFileUpload(handleUploadData);
     webServer.on("/delete", HTTP_POST, handleDelete);
     webServer.on("/reboot", HTTP_POST, handleReboot);
     webServer.onNotFound(handleNotFound);
