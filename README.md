@@ -139,10 +139,10 @@ pio run -t upload      # 上传固件
 | `/ps4/afterglow/` | Afterglow 12.00 – 14.02 |
 | `/admin.html` | 管理页 |
 | `/api/status` | 运行状态 JSON |
-| `/api/files` | 已上传 payload 列表 |
-| `/upload` / `/delete` / `/reboot` | 管理 API（POST） |
+| `/api/files` | 可替换 payload 列表（全盘扫描 `.bin` / `.elf` / PS5 `.js`） |
+| `/upload?path=...` / `/delete` / `/reboot` | 管理 API（POST） |
 
-`/payloads/` 下的文件可通过管理页上传，供页面按需引用。
+管理页会列出固件里所有可替换的 payload（GoldHEN、各固件补丁、PS5 autoloader 等）。选中目标后上传新的原始文件即可覆盖对应路径，旧的 gzip 缓存会自动清除，下次触发漏洞时主机直接加载新文件——**无需重新烧录固件**。请务必选对与主机固件匹配的路径；上传的文件不会自动校验内容，用错 payload 会导致触发失败。
 
 ---
 

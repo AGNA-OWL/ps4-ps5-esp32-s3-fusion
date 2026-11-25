@@ -8,31 +8,44 @@
 body{background:#11131a;color:#e7ecf5;font-family:system-ui,sans-serif;margin:0;padding:24px;line-height:1.6}
 h1{font-size:22px} h2{font-size:17px;margin-top:26px}
 .panel{background:#1b2030;border:1px solid #2c3447;border-radius:12px;padding:16px;margin-bottom:16px}
-button,input{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid #3a445c;background:#242c3f;color:#e7ecf5}
+button,input,select{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid #3a445c;background:#242c3f;color:#e7ecf5}
 button{cursor:pointer;background:#3159a8;border-color:#4b79d0;margin-left:6px}
 button:hover{background:#3c6ac5}
+button.danger{background:#8a3040;border-color:#b84a5e}
 code{background:#0c0f16;padding:2px 6px;border-radius:4px;color:#a8e6a3}
-table{border-collapse:collapse;width:100%} td,th{border-bottom:1px solid #2c3447;padding:6px;text-align:left}
 small{color:#9aa6bd}
+table{border-collapse:collapse;width:100%} td,th{border-bottom:1px solid #2c3447;padding:6px;text-align:left}
+tr:hover td{background:#222a3c}
+.note{background:#2a2410;border:1px solid #5a4a1c;border-radius:8px;padding:10px 12px;color:#e8d9a0}
+#status{font-size:14px}
 </style>
 </head>
 <body>
 <h1>融合 Portal 管理</h1>
-<p class="small">仅用于本机维护。上传的 payload 写入 LittleFS 的 <code>/payloads/</code> 目录。</p>
+<p class="small">仅用于本机维护。本页管理的是 ESP32 板子本身，不影响主机破解流程。</p>
 
 <div class="panel" id="status">加载状态中…</div>
 
 <div class="panel">
-<h2 style="margin-top:0">上传 payload</h2>
-<form id="uploadForm">
+<h2 style="margin-top:0">替换 payload</h2>
+<div class="note">
+上传的文件会<strong>覆盖选中的 payload 路径</strong>，下次触发漏洞时主机就会加载新文件，<strong>无需重新烧录固件</strong>。
+请选择与目标主机/固件对应的正确 payload（例如 PS4 9.00 选 <code>/ps4/pspulse/900/goldhen.bin</code>）。
+上传的是原始文件，不需要 gzip —— 旧的压缩缓存会被自动清除。
+</div>
+<form id="uploadForm" style="margin-top:12px">
+<label>目标 payload：<br>
+<select name="path" id="payloadSelect" style="width:100%;margin:8px 0"></select>
+</label>
 <input type="file" name="payload" id="payloadFile" required>
-<button type="submit">上传</button>
+<button type="submit">上传替换</button>
 </form>
 </div>
 
 <div class="panel">
-<h2 style="margin-top:0">已上传文件</h2>
-<table id="fileTable"><thead><tr><th>文件</th><th>大小</th><th></th></tr></thead><tbody></tbody></table>
+<h2 style="margin-top:0">当前 payload 列表</h2>
+<p class="small" id="fileCount"></p>
+<table id="fileTable"><thead><tr><th>路径</th><th>大小</th><th>存储</th><th></th></tr></thead><tbody></tbody></table>
 </div>
 
 <div class="panel">
@@ -40,6 +53,12 @@ small{color:#9aa6bd}
 </div>
 
 <script>
+let payloads = [];
+
+function fmtSize(n) {
+  return n >= 1048576 ? (n/1048576).toFixed(2)+' MB' : (n/1024).toFixed(1)+' KB';
+}
+
 async function refresh() {
   try {
     const s = await (await fetch('/api/status')).json();
@@ -51,32 +70,60 @@ async function refresh() {
     document.getElementById('status').textContent = '状态读取失败: ' + e;
   }
   try {
-    const files = await (await fetch('/api/files')).json();
+    payloads = await (await fetch('/api/files')).json();
+    const sel = document.getElementById('payloadSelect');
+    const keep = sel.value;
+    sel.innerHTML = '';
+    payloads.forEach((f, i) => {
+      const o = document.createElement('option');
+      o.value = f.path;
+      o.textContent = f.path + '  (' + fmtSize(f.size) + ')';
+      sel.appendChild(o);
+      if (f.path === keep) sel.value = f.path;
+    });
+
     const tbody = document.querySelector('#fileTable tbody');
     tbody.innerHTML = '';
-    files.forEach(f => {
+    payloads.forEach(f => {
       const tr = document.createElement('tr');
-      tr.innerHTML = '<td>' + f.name + '</td><td>' + f.size + '</td>' +
-        '<td><button onclick="removeFile(\'' + f.name.replace(/'/g, "\\'") + '\')">删除</button></td>';
+      const td = document.createElement('td');
+      td.textContent = f.path;
+      const sz = document.createElement('td');
+      sz.textContent = fmtSize(f.size);
+      const st = document.createElement('td');
+      st.textContent = f.gzip ? 'gzip' : '原始';
+      const act = document.createElement('td');
+      const btn = document.createElement('button');
+      btn.textContent = '删除';
+      btn.className = 'danger';
+      btn.onclick = () => removePayload(f.path);
+      act.appendChild(btn);
+      tr.appendChild(td); tr.appendChild(sz); tr.appendChild(st); tr.appendChild(act);
       tbody.appendChild(tr);
     });
-  } catch (e) { /* ignore */ }
+    document.getElementById('fileCount').textContent = '共 ' + payloads.length + ' 个可替换 payload';
+  } catch (e) {
+    document.getElementById('fileCount').textContent = 'payload 列表读取失败: ' + e;
+  }
 }
 
 document.getElementById('uploadForm').addEventListener('submit', async e => {
   e.preventDefault();
   const file = document.getElementById('payloadFile').files[0];
-  if (!file) return;
+  const path = document.getElementById('payloadSelect').value;
+  if (!file || !path) return;
+  if (!confirm('确认用 ' + file.name + ' 替换 ' + path + '？')) return;
   const fd = new FormData();
   fd.append('payload', file, file.name);
-  const res = await fetch('/upload', { method: 'POST', body: fd });
+  const res = await fetch('/upload?path=' + encodeURIComponent(path), { method: 'POST', body: fd });
   alert(await res.text());
   refresh();
 });
 
-async function removeFile(name) {
+async function removePayload(path) {
+  if (!confirm('确认删除 ' + path + '？对应固件将无法加载该 payload。')) return;
   const fd = new FormData();
-  fd.append('name', name);
+  fd.append('path', path);
   const res = await fetch('/delete', { method: 'POST', body: fd });
   alert(await res.text());
   refresh();
@@ -89,7 +136,7 @@ async function doReboot() {
 }
 
 refresh();
-setInterval(refresh, 10000);
+setInterval(refresh, 30000);
 </script>
 </body>
 </html>

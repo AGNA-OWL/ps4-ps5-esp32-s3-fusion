@@ -21,30 +21,6 @@ static void setNoCache()
     webServer.sendHeader("Expires", "0");
 }
 
-static String safeFileName(const String &input)
-{
-    String name = input;
-    int slash = name.lastIndexOf('/');
-    if (slash >= 0)
-        name = name.substring(slash + 1);
-    slash = name.lastIndexOf('\\');
-    if (slash >= 0)
-        name = name.substring(slash + 1);
-
-    String safe;
-    for (size_t i = 0; i < name.length() && safe.length() < 64; i++)
-    {
-        char c = name.charAt(i);
-        if (isalnum(static_cast<unsigned char>(c)) || c == '.' || c == '-' || c == '_')
-            safe += c;
-        else
-            safe += '_';
-    }
-    if (safe.length() == 0)
-        safe = "payload.bin";
-    return safe;
-}
-
 static void handleStatus()
 {
     setNoCache();
@@ -66,35 +42,77 @@ static void handleStatus()
     webServer.send(200, "application/json; charset=utf-8", json);
 }
 
+// Only these extensions are real payloads that the bundled exploit pages load.
+// Replacing them changes what gets injected after the exploit succeeds.
+static bool isPayloadFile(const String &path)
+{
+    String lower = path;
+    lower.toLowerCase();
+    return lower.endsWith(".bin") || lower.endsWith(".elf") ||
+           lower.endsWith(".bin.gz") || lower.endsWith(".elf.gz") ||
+           lower.endsWith("/payloads/autoloader.js") ||
+           lower.endsWith("/payloads/autoloader.js.gz") ||
+           lower.endsWith("/payloads/autoload.js") ||
+           lower.endsWith("/payloads/autoload.js.gz") ||
+           lower.endsWith("/payloads/poops.js") ||
+           lower.endsWith("/payloads/poops.js.gz") ||
+           lower.endsWith("/payloads/relapse.js") ||
+           lower.endsWith("/payloads/relapse.js.gz");
+}
+
+static String payloadLogicalPath(const String &storagePath)
+{
+    if (storagePath.endsWith(".gz"))
+        return storagePath.substring(0, storagePath.length() - 3);
+    return storagePath;
+}
+
+static void scanPayloads(File dir, const String &prefix, String &json, bool &first)
+{
+    File child = dir.openNextFile();
+    while (child)
+    {
+        // LittleFS returns names with a leading slash on some cores.
+        String name = child.name();
+        while (name.startsWith("/"))
+            name = name.substring(1);
+        String full = prefix + "/" + name;
+
+        if (child.isDirectory())
+        {
+            scanPayloads(child, full, json, first);
+        }
+        else if (isPayloadFile(full))
+        {
+            String logical = payloadLogicalPath(full);
+            if (!first)
+                json += ",";
+            first = false;
+            json += "{\"path\":\"" + portalJsonEscape(logical) +
+                    "\",\"size\":" + String(child.size()) +
+                    ",\"gzip\":" + String(full.endsWith(".gz") ? "true" : "false") + "}";
+        }
+        child = dir.openNextFile();
+    }
+}
+
 static void handleFiles()
 {
     setNoCache();
     String json = "[";
     bool first = true;
 
-    File dir = LittleFS.open(PORTAL_PAYLOAD_DIR, "r");
-    if (dir && dir.isDirectory())
-    {
-        File file = dir.openNextFile();
-        while (file)
-        {
-            if (!file.isDirectory())
-            {
-                String name = safeFileName(file.name());
-                if (!first)
-                    json += ",";
-                first = false;
-                json += "{\"name\":\"" + portalJsonEscape(name) +
-                        "\",\"size\":" + String(file.size()) + "}";
-            }
-            file = dir.openNextFile();
-        }
-        dir.close();
-    }
+    File root = LittleFS.open("/", "r");
+    if (root && root.isDirectory())
+        scanPayloads(root, "", json, first);
 
     json += "]";
     webServer.send(200, "application/json; charset=utf-8", json);
 }
+
+// Upload target comes from the query string so it is parsed before the
+// multipart body: POST /upload?path=/ps4/pspulse/900/goldhen.bin
+static String uploadPath;
 
 static void handleUploadData()
 {
@@ -102,10 +120,26 @@ static void handleUploadData()
 
     if (upload.status == UPLOAD_FILE_START)
     {
-        uploadName = safeFileName(upload.filename);
-        String path = String(PORTAL_PAYLOAD_DIR) + "/" + uploadName;
-        uploadFile = LittleFS.open(path, "w");
+        uploadPath = portalNormalizePath(webServer.arg("path"));
+        uploadSucceeded = false;
+
+        // The target must be an existing payload the bundled pages actually
+        // load. We never create arbitrary paths or touch exploit JS/HTML.
+        if (!isPayloadFile(uploadPath))
+        {
+            Serial.printf("[HTTP] rejected payload target: %s\n", uploadPath.c_str());
+            return;
+        }
+
+        // If the original was gzip'd, remove the cached .gz copy so the new
+        // uncompressed payload is served immediately.
+        String gz = uploadPath + ".gz";
+        if (LittleFS.exists(gz))
+            LittleFS.remove(gz);
+
+        uploadFile = LittleFS.open(uploadPath, "w");
         uploadSucceeded = uploadFile ? true : false;
+        uploadName = uploadPath;
     }
     else if (upload.status == UPLOAD_FILE_WRITE)
     {
@@ -119,7 +153,7 @@ static void handleUploadData()
         if (uploadFile)
             uploadFile.close();
         if (uploadSucceeded)
-            Serial.printf("[HTTP] uploaded %s\n", uploadName.c_str());
+            Serial.printf("[HTTP] replaced payload %s\n", uploadPath.c_str());
     }
 }
 
@@ -127,18 +161,27 @@ static void handleUpload()
 {
     setNoCache();
     if (!uploadSucceeded)
-        webServer.send(500, "text/plain", "Upload failed");
+        webServer.send(500, "text/plain", "Upload failed or invalid target: " + uploadPath);
     else
-        webServer.send(200, "text/plain", "OK: " + uploadName);
+        webServer.send(200, "text/plain", "OK: replaced " + uploadPath);
 }
 
 static void handleDelete()
 {
     setNoCache();
-    String name = safeFileName(webServer.arg("name"));
-    String path = String(PORTAL_PAYLOAD_DIR) + "/" + name;
-    bool removed = LittleFS.exists(path) && LittleFS.remove(path);
-    webServer.send(removed ? 200 : 404, "text/plain", removed ? "OK" : "Not found");
+    String path = portalNormalizePath(webServer.arg("path"));
+    bool ok = false;
+    if (isPayloadFile(path))
+    {
+        String gz = path + ".gz";
+        bool removed = false;
+        if (LittleFS.exists(gz))
+            removed = LittleFS.remove(gz) || removed;
+        if (LittleFS.exists(path))
+            removed = LittleFS.remove(path) || removed;
+        ok = removed;
+    }
+    webServer.send(ok ? 200 : 404, "text/plain", ok ? "OK" : "Not found or invalid target");
 }
 
 static void handleReboot()
