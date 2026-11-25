@@ -1,0 +1,40 @@
+Project licensing notice
+
+The MIT License below applies only to the original firmware, build scripts,
+templates and documentation in this repository.
+
+It does NOT apply to the third-party exploit pages, payload binaries or
+exfathax data that tools/stage_payloads.py downloads into data/ and
+src/exfathax.h. Those files remain subject to the terms of their respective
+authors. In particular:
+
+  - PS5 autoloader host: percdotdev/ps5-webkit-autoloader-esp32
+    (original firmware/build code MIT; bundled third-party material excluded)
+  - PS4 PSPulse host: psx8/psx8.github.io
+  - PS4 Afterglow host: well0nez/afterglow-web (AGPL-3.0)
+  - PS4 9.00 exfathax bytes: doj/ESP32-Server-900u
+
+Do not redistribute a generated firmware image containing those assets
+without checking each upstream project's redistribution terms.
+
+MIT License
+
+Copyright (c) 2026 ps4-ps5-s3-fusion contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

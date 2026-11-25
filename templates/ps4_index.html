@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PS4 漏洞入口</title>
+<style>
+body{background:#11131a;color:#e7ecf5;font-family:system-ui,sans-serif;margin:0;padding:24px;line-height:1.6}
+h1{font-size:22px;margin:0 0 4px}
+p.sub{color:#9aa6bd;margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+a.card,div.card{display:block;background:#1b2030;border:1px solid #2c3447;border-radius:12px;padding:16px;text-decoration:none;color:inherit}
+a.card:hover{border-color:#5b8cff;background:#222a3e}
+b{color:#7fa9ff}
+code{background:#0c0f16;padding:2px 6px;border-radius:4px;color:#a8e6a3}
+.warn{background:#2a1f16;border-color:#6b4a25;color:#ffd7a3}
+small{color:#8e9ab2}
+</style>
+</head>
+<body>
+<h1>PS4 漏洞入口</h1>
+<p class="sub">选择与主机系统版本一致的页面。刷错版本不会生效。</p>
+
+<div class="grid">
+<a class="card" href="pspulse/index.html">
+<b>PSPulse 固件选择器</b><br>
+<small>5.05 / 6.72 / 7.00 / 9.00 / 13.00 / 13.52</small>
+</a>
+<a class="card" href="afterglow/index.html">
+<b>Afterglow</b><br>
+<small>12.00 – 14.02（按 patchset 选择对应版本）</small>
+</a>
+</div>
+
+<h2 style="margin-top:26px;font-size:18px">直达链接</h2>
+<div class="grid">
+<a class="card" href="pspulse/505/index.html">5.05</a>
+<a class="card" href="pspulse/672/index.html">6.72</a>
+<a class="card" href="pspulse/700/index.html">7.00</a>
+<a class="card warn" href="pspulse/900/index.html">9.00（USB exfathax）</a>
+<a class="card" href="pspulse/1300/index.html">13.00</a>
+<a class="card" href="pspulse/1352/index.html">13.52</a>
+<a class="card" href="afterglow/jb.html">Afterglow JB</a>
+</div>
+
+<h2 style="margin-top:26px;font-size:18px">使用说明</h2>
+<ul>
+<li>本设备开机即向主机提供 Wi‑Fi、DNS、HTTP/HTTPS 服务，并把用户指南域名指向本机。</li>
+<li>PS4 9.00 需要 USB 大容量存储触发：ESP32‑S3 的原生 USB 口已模拟 exfathax 设备，需接到主机 USB 口。</li>
+<li>PS4 9.60 / 10.00 / 10.01 / 11.00 走 PPPwn（网线 PPPoE），不在本 WiFi 方案内。</li>
+<li>越狱不是持久的，主机重启后需要重新触发。请保持离线使用。</li>
+</ul>
+
+<p><small><a href="/">返回 PS5 入口</a> · <a href="/admin.html">管理页面</a></small></p>
+</body>
+</html>

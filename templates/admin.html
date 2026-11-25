@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>融合 Portal 管理</title>
+<style>
+body{background:#11131a;color:#e7ecf5;font-family:system-ui,sans-serif;margin:0;padding:24px;line-height:1.6}
+h1{font-size:22px} h2{font-size:17px;margin-top:26px}
+.panel{background:#1b2030;border:1px solid #2c3447;border-radius:12px;padding:16px;margin-bottom:16px}
+button,input{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid #3a445c;background:#242c3f;color:#e7ecf5}
+button{cursor:pointer;background:#3159a8;border-color:#4b79d0;margin-left:6px}
+button:hover{background:#3c6ac5}
+code{background:#0c0f16;padding:2px 6px;border-radius:4px;color:#a8e6a3}
+table{border-collapse:collapse;width:100%} td,th{border-bottom:1px solid #2c3447;padding:6px;text-align:left}
+small{color:#9aa6bd}
+</style>
+</head>
+<body>
+<h1>融合 Portal 管理</h1>
+<p class="small">仅用于本机维护。上传的 payload 写入 LittleFS 的 <code>/payloads/</code> 目录。</p>
+
+<div class="panel" id="status">加载状态中…</div>
+
+<div class="panel">
+<h2 style="margin-top:0">上传 payload</h2>
+<form id="uploadForm">
+<input type="file" name="payload" id="payloadFile" required>
+<button type="submit">上传</button>
+</form>
+</div>
+
+<div class="panel">
+<h2 style="margin-top:0">已上传文件</h2>
+<table id="fileTable"><thead><tr><th>文件</th><th>大小</th><th></th></tr></thead><tbody></tbody></table>
+</div>
+
+<div class="panel">
+<button onclick="doReboot()">重启设备</button>
+</div>
+
+<script>
+async function refresh() {
+  try {
+    const s = await (await fetch('/api/status')).json();
+    document.getElementById('status').innerHTML =
+      'SSID <code>' + s.ap_ssid + '</code> · IP <code>' + s.ap_ip + '</code> · 客户端 ' + s.clients +
+      '<br>堆内存 <code>' + s.free_heap + '</code> B · 文件系统 <code>' + s.fs_used + '/' + s.fs_total + '</code> B' +
+      '<br>USB MSC <code>' + (s.usb_msc ? '启用' : '未启用') + '</code> · DNS 查询 <code>' + s.dns_queries + '</code>';
+  } catch (e) {
+    document.getElementById('status').textContent = '状态读取失败: ' + e;
+  }
+  try {
+    const files = await (await fetch('/api/files')).json();
+    const tbody = document.querySelector('#fileTable tbody');
+    tbody.innerHTML = '';
+    files.forEach(f => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td>' + f.name + '</td><td>' + f.size + '</td>' +
+        '<td><button onclick="removeFile(\'' + f.name.replace(/'/g, "\\'") + '\')">删除</button></td>';
+      tbody.appendChild(tr);
+    });
+  } catch (e) { /* ignore */ }
+}
+
+document.getElementById('uploadForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const file = document.getElementById('payloadFile').files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('payload', file, file.name);
+  const res = await fetch('/upload', { method: 'POST', body: fd });
+  alert(await res.text());
+  refresh();
+});
+
+async function removeFile(name) {
+  const fd = new FormData();
+  fd.append('name', name);
+  const res = await fetch('/delete', { method: 'POST', body: fd });
+  alert(await res.text());
+  refresh();
+}
+
+async function doReboot() {
+  if (!confirm('确认重启设备？')) return;
+  await fetch('/reboot', { method: 'POST' });
+  alert('设备正在重启');
+}
+
+refresh();
+setInterval(refresh, 10000);
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+# PlatformIO / build artifacts
+.pio/
+build/
+*.bin
+*.elf
+*.map
+
+# Generated upstream payload tree (fetch with tools/stage_payloads.py)
+.cache/
+data/*
+!data/.gitkeep
+src/exfathax.h
+
+# Local tooling
+__pycache__/
+*.pyc
+*.log
+.DS_Store
