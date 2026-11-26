@@ -25,7 +25,7 @@ small{color:#8e9ab2}
 <div id="manual" style="display:none">
 <p class="sub">当前不是 PS4 主机浏览器（可能是电脑或手机），无法自动识别。你可以在 PS4 上打开 <code>http://192.168.4.1/ps4/</code>，或手动选择：</p>
 <a class="card" href="g2all/index.html"><b>自动识别入口（GoldHEN Multi FW）</b><br><small>5.05 / 7.00–14.02，按主机版本自动选择</small></a>
-<a class="card" href="pspulse/672/index.html"><b>PS4 6.72 专用入口</b><br><small>g2all 不支持 6.72，此版本请用本入口</small></a>
+<a class="card" href="672goldhen/index.html"><b>PS4 6.72 专用入口</b><br><small>GamerHack 672goldhen，自动装 GoldHEN 2.4b18.14</small></a>
 </div>
 
 <h2 style="margin-top:26px;font-size:18px">说明</h2>
@@ -44,9 +44,11 @@ small{color:#8e9ab2}
   var manual = document.getElementById('manual');
   var m = navigator.userAgent.match(/PlayStation 4[ /]([\d.]+)/i);
   if (m) {
-    auto.innerHTML = '检测到 PS4 系统 <code>' + m[1] + '</code>，正在加载对应漏洞…';
-    // g2all performs the fine-grained version routing and AppCache install.
-    location.replace('g2all/index.html');
+    var fw = m[1];
+    auto.innerHTML = '检测到 PS4 系统 <code>' + fw + '</code>，正在加载对应漏洞…';
+    // g2all skips 6.72 ("Unsupported Firmware"); route that version to the
+    // dedicated GamerHack 672goldhen entry. All others go through g2all.
+    location.replace(/^6\.72$/.test(fw) ? '672goldhen/index.html' : 'g2all/index.html');
   } else {
     auto.textContent = '未检测到 PS4 主机，以下为手动入口。';
     manual.style.display = 'block';

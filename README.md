@@ -6,7 +6,7 @@
 - HTTP（80）+ HTTPS（443）静态站点
 - PS5 WebKit Autoloader（用户指南入口，自动识别固件）
 - **PS4 一键破解**（GamerHack g2all）：打开 `/ps4/` 自动识别系统版本并加载对应漏洞（5.05 / 7.00–14.02），无需手动选择
-- PS4 6.72 专用入口（g2all 不支持 6.72，单独保留 PSPulse 的 6.72 链）
+- PS4 6.72 自动分流到 GamerHack `672goldhen`（g2all 不支持该版本），两者同为 GoldHEN 2.4b18.14
 - exfathax USB 大容量存储模拟（ESP32-S3 USB‑OTG，保留备用；g2all 的 9.00 已走 WebKit 链，不再依赖 USB）
 - 网页管理端：系统监控、payload 升级（无需重烧固件）、重启
 
@@ -33,13 +33,13 @@
 |---|---|---|---|
 | PS5 | 7.00 – 13.60（Poops / Relapse） | 用户指南 → 本机 `/` | 自动识别固件；9.05 只能用 Poops |
 | PS4 | 5.05 / 5.07 | `/ps4/` → 自动跳转 | 首次加载会把缓存装入主机 |
-| PS4 | 6.72 | `/ps4/pspulse/672/`（手动页里的专用入口） | g2all 不支持，单独保留 |
+| PS4 | 6.72 | `/ps4/` → 自动分流到 `/ps4/672goldhen/` | GamerHack 专用入口，自动装 GoldHEN 2.4b18.14 |
 | PS4 | 7.00 – 8.52 | `/ps4/` → 自动跳转 | psfree + lapse 链 |
 | PS4 | 9.00 – 9.60 | `/ps4/` → 自动跳转 | 纯 WebKit 链，无需 USB |
 | PS4 | 10.00 – 11.02 | `/ps4/` → 自动跳转 | ChendoChap CSS 内核漏洞 |
 | PS4 | 11.50 – 14.02 | `/ps4/` → 自动跳转 | slopkit 链 |
 
-**打开 `/ps4/` 即自动识别**：入口页读取主机 User-Agent 里的系统版本，跳到对应 g2all 漏洞链。首次会把文件装入主机离线缓存，按提示关闭浏览器、断开网络再打开即可触发。g2all 覆盖 5.05 / 7.00–14.02；**6.72 不在其识别区间**，需从 `/ps4/` 的手动区进入 6.72 专用入口。传统 PPPwn（网线 PPPoE）方案不在本 WiFi 托管范围内。
+**打开 `/ps4/` 即自动识别**：入口页读取主机 User-Agent 里的系统版本，跳到对应漏洞链。首次会把文件装入主机离线缓存，按提示关闭浏览器、断开网络再打开即可触发。g2all 覆盖 5.05 / 7.00–14.02；**6.72 会自动分流到 `/ps4/672goldhen/`**（g2all 的识别区间跳过该版本）。传统 PPPwn（网线 PPPoE）方案不在本 WiFi 托管范围内。
 
 ---
 
@@ -90,8 +90,8 @@ python3 tools/gen_certs.py --output src/server_certs.h
 python3 tools/stage_payloads.py --update
 ```
 
-脚本会克隆四个浅仓库（PS5 autoloader、PSPulse 仅 6.72、GamerHack g2all、exfathax）到 `.cache/`，把静态文件放进 `data/`，对文本/payload 做 gzip（原文件删除），并生成 `src/exfathax.h`。
-g2all 自带 5.05 / 7.00–14.02 的完整自洽漏洞链，因此 PSPulse 的其他固件目录与 Afterglow 已精简掉，仅保留 g2all 不支持的 6.72。
+脚本会克隆三个浅仓库（PS5 autoloader、GamerHack 的 `g2all` + `672goldhen`、exfathax）到 `.cache/`，把静态文件放进 `data/`，对文本/payload 做 gzip（原文件删除），并生成 `src/exfathax.h`。
+GamerHack 的 g2all 自带 5.05 / 7.00–14.02 的完整自洽漏洞链；6.72 用同仓库的 `672goldhen` 入口补齐（GoldHEN 版本与 g2all 一致）。PSPulse、Afterglow 及 GamerHack 那些带第三方菜单的单版本目录均为冗余，未纳入打包。
 当前打包体积约 **2.6 MiB**，远小于 12.94 MiB 的 LittleFS 分区。
 
 ### 4.4 烧录
@@ -131,7 +131,7 @@ pio run -t upload      # 上传固件
 3. 按需访问：
    - **PS5**：打开「用户指南」（DNS 已把 `manuals.playstation.net` 指到 ESP32），自动识别固件并按提示安装快捷方式。
    - **PS4**：浏览器打开 `http://192.168.4.1/ps4/`，**自动识别系统版本**并加载对应漏洞，无需手动选择。
-   - **PS4 6.72**：g2all 不支持该版本，在 `/ps4/` 的手动区点「6.72 专用入口」。
+   - **PS4 6.72**：`/ps4/` 会自动分流到 `672goldhen`；手动入口同样可用。
 4. 电脑浏览器可访问门户与维护页（见下表）。
 
 ### 主要路由
@@ -142,7 +142,7 @@ pio run -t upload      # 上传固件
 | `/portal.html` | 简洁门户首页（PS5 / PS4 / 监控 / 升级） |
 | `/ps4/` | **PS4 一键入口**：自动识别固件 → g2all 对应漏洞链 |
 | `/ps4/g2all/` | GamerHack g2all 自动识别主机（5.05 / 7.00–14.02） |
-| `/ps4/pspulse/672/` | PS4 6.72 专用入口（g2all 不支持的版本） |
+| `/ps4/672goldhen/` | PS4 6.72 专用入口（GoldHEN 2.4b18.14） |
 | `/status.html` | 系统监控（AP 客户端、内存、PSRAM、LittleFS、运行时间） |
 | `/admin.html` | 破解程序升级 / payload 管理 / 重启 |
 | `/api/status` | 运行状态 JSON |
@@ -156,7 +156,7 @@ pio run -t upload      # 上传固件
 ## 6. 已知限制
 
 - **g2all 的区间覆盖**：10.00–11.02 走 ChendoChap CSS 内核漏洞，11.50–14.02 走 slopkit；9.60、10.01、11.00 等具体小版本以 g2all 的 User-Agent 判定为准。传统 PPPwn（网线 PPPoE）方案不在本 WiFi 托管范围内。
-- **6.72 是唯一例外**：g2all 的识别逻辑只认 5.05 / 5.07 和 7.00–14.02，6.72 会显示 Unsupported Firmware，本工程为此单独保留 PSPulse 的 6.72 链。
+- **6.72 是唯一例外**：g2all 的识别逻辑只认 5.05 / 5.07 和 7.00–14.02，6.72 会显示 Unsupported Firmware。入口页已按 UA 自动把 6.72 分流到 GamerHack 的 `672goldhen`，用的是同一套 WebKit 利用原语和同一个 GoldHEN 2.4b18.14 文件。
 - 越狱不持久；主机重启后重新触发。
 - 高版本页面可能失败，WebKit 漏洞本身有成功率，不是 100%。
 - DNS 是通配符劫持：连接热点的设备所有域名都会被指到 ESP32；请仅用于离线测试。
@@ -173,8 +173,7 @@ pio run -t upload      # 上传固件
 本工程原始代码的许可证见 [LICENSE](LICENSE)（MIT）。以下上游资源由脚本运行时下载，**不随本仓库分发**：
 
 - [percdotdev/ps5-webkit-autoloader-esp32](https://github.com/percdotdev/ps5-webkit-autoloader-esp32) — PS5 autoloader host
-- [psx8/psx8.github.io](https://github.com/psx8/psx8.github.io) — PSPulse 6.72 host 与 payload（仅保留 6.72）
-- [GamerHack/GamerHack.github.io](https://github.com/GamerHack/GamerHack.github.io) — g2all 多固件自动识别入口（5.05 / 7.00–14.02；仓库未声明许可证，请自行确认再分发条款）
+- [GamerHack/GamerHack.github.io](https://github.com/GamerHack/GamerHack.github.io) — `g2all` 多固件自动识别入口（5.05 / 7.00–14.02）与 `672goldhen` 专用入口（6.72）；作者 GamerHack（Twitter/X @GamerHack93），漏洞/payload 致谢 sleirsgoevy、Leeful、_AlAzif 等上游开发者。仓库未声明许可证，请自行确认再分发条款。
 - [doj/ESP32-Server-900u](https://github.com/doj/ESP32-Server-900u) — exfathax USB 数据结构
 
 发布包含上游资源的固件镜像前，请自行确认各上游项目的再分发条款。

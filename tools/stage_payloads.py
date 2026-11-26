@@ -7,12 +7,15 @@ Run it before `pio run -t uploadfs`.
 
 Sources:
   PS5 autoloader : percdotdev/ps5-webkit-autoloader-esp32 (host/packed)
-  PS4 6.72 only  : psx8/psx8.github.io (PSPulse's 6.72 chain; g2all lacks 6.72)
-  PS4 multi-FW   : GamerHack/GamerHack.github.io (g2all auto-detect host)
+  PS4 multi-FW   : GamerHack/GamerHack.github.io
+                   - g2all: auto-detect host for 5.05 and 7.00-14.02
+                   - 672goldhen: dedicated 6.72 entry (g2all lacks 6.72)
   PS4 9.00 USB   : doj/ESP32-Server-900u (exfathax.h only)
 
-GamerHack's g2all covers 5.05 and 7.00-14.02 with self-contained chains, so
-the other PSPulse firmware folders and Afterglow are intentionally not staged.
+GamerHack's g2all is self-contained for every firmware except 6.72, and its
+672goldhen entry uses the same GoldHEN 2.4b18.14 payload as g2all. All other
+PS4 hosts (PSPulse, Afterglow, GamerHack single-FW menus) are intentionally
+not staged: they are redundant for jailbreaking and too large for LittleFS.
 """
 from __future__ import annotations
 
@@ -36,10 +39,6 @@ REPOS = {
         "https://github.com/percdotdev/ps5-webkit-autoloader-esp32.git",
         "ps5-autoloader",
     ),
-    "pspulse": (
-        "https://github.com/psx8/psx8.github.io.git",
-        "psx8",
-    ),
     "gamerhack": (
         "https://github.com/GamerHack/GamerHack.github.io.git",
         "gamerhack",
@@ -50,12 +49,9 @@ REPOS = {
     ),
 }
 
-# Only 6.72 is kept: GamerHack g2all already covers 5.05 and 7.00-14.02
-# with its own self-contained chains. 6.72 is the one firmware g2all does
-# not handle ("Unsupported Firmware"), so we keep PSPulse's minimal 6.72 set.
-# Its cache manifest references ../pspulse.png, hence that file is staged too.
-PSX8_DIRS = ["672"]
-PSX8_FILES = ["pspulse.png"]
+# 6.72 comes from GamerHack's 672goldhen entry: same WebKit-based exploit
+# family as g2all, same GoldHEN 2.4b18.14 payload, and only a handful of files.
+GAMERHACK_672_DIR = "672goldhen"
 
 GZIP_SUFFIXES = {
     ".html", ".htm", ".js", ".mjs", ".css", ".json", ".svg",
@@ -101,39 +97,32 @@ def stage_ps5(ps5: Path, data: Path) -> None:
     copy_tree(packed, data)
 
 
-def stage_pspulse(psx8: Path, data: Path) -> None:
-    target = data / "ps4" / "pspulse"
-    target.mkdir(parents=True, exist_ok=True)
-    for name in PSX8_DIRS:
-        src = psx8 / name
-        if src.is_dir():
-            copy_tree(src, target / name)
-    for name in PSX8_FILES:
-        src = psx8 / name
-        if src.is_file():
-            shutil.copy2(src, target / name)
-
-
 def stage_gamerhack(gamerhack: Path, data: Path) -> None:
-    """Stage GamerHack's g2all auto-detect host as the unified PS4 entry.
+    """Stage GamerHack's PS4 hosts: g2all auto-detect + 672goldhen fallback.
 
     g2all reads the PS4 firmware from navigator.userAgent and loads the right
     exploit chain (5.05, 7.00-8.52, 9.00-9.60, 10.00-11.02, 11.50-14.02).
-    Its manifests use Windows backslashes and reference ../style.css and
-    ../img.jpg, so normalize paths and stage those two files in data/ps4/.
+    It does not handle 6.72, so the separate 672goldhen entry is staged as
+    /ps4/672goldhen/ and used for that firmware.
+
+    Both manifests reference ../style.css and ../img.jpg, so those two files
+    are staged in data/ps4/. Manifests are normalized to forward slashes for
+    the HTTP server.
     """
-    src = gamerhack / "g2all"
-    if not src.is_dir():
-        raise SystemExit(f"missing g2all path: {src}")
-    target = data / "ps4" / "g2all"
-    copy_tree(src, target)
+    targets = []
+    for name in ("g2all", GAMERHACK_672_DIR):
+        src = gamerhack / name
+        if not src.is_dir():
+            raise SystemExit(f"missing GamerHack path: {src}")
+        target = data / "ps4" / name
+        copy_tree(src, target)
+        targets.append(target)
 
-    # Manifests must use forward slashes for the HTTP server.
-    for manifest in target.glob("*.manifest"):
-        text = manifest.read_text(encoding="utf-8", errors="replace")
-        manifest.write_text(text.replace("\\", "/"), encoding="utf-8")
+    for target in targets:
+        for manifest in target.glob("*.manifest"):
+            text = manifest.read_text(encoding="utf-8", errors="replace")
+            manifest.write_text(text.replace("\\", "/"), encoding="utf-8")
 
-    # g2all pages reference ../style.css and ../img.jpg from inside g2all/.
     for name in ("style.css", "img.jpg"):
         upstream = gamerhack / name
         if upstream.is_file():
@@ -233,7 +222,6 @@ def main() -> int:
     repos = {key: ensure_repo(cache, key, args.update) for key in REPOS}
 
     stage_ps5(repos["ps5"], data)
-    stage_pspulse(repos["pspulse"], data)
     stage_gamerhack(repos["gamerhack"], data)
     stage_templates(data)
     (data / "payloads").mkdir(parents=True, exist_ok=True)
