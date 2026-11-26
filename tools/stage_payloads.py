@@ -7,10 +7,12 @@ Run it before `pio run -t uploadfs`.
 
 Sources:
   PS5 autoloader : percdotdev/ps5-webkit-autoloader-esp32 (host/packed)
-  PS4 PSPulse    : psx8/psx8.github.io
-  PS4 Afterglow  : well0nez/afterglow-web
+  PS4 6.72 only  : psx8/psx8.github.io (PSPulse's 6.72 chain; g2all lacks 6.72)
   PS4 multi-FW   : GamerHack/GamerHack.github.io (g2all auto-detect host)
   PS4 9.00 USB   : doj/ESP32-Server-900u (exfathax.h only)
+
+GamerHack's g2all covers 5.05 and 7.00-14.02 with self-contained chains, so
+the other PSPulse firmware folders and Afterglow are intentionally not staged.
 """
 from __future__ import annotations
 
@@ -38,10 +40,6 @@ REPOS = {
         "https://github.com/psx8/psx8.github.io.git",
         "psx8",
     ),
-    "afterglow": (
-        "https://github.com/well0nez/afterglow-web.git",
-        "afterglow-web",
-    ),
     "gamerhack": (
         "https://github.com/GamerHack/GamerHack.github.io.git",
         "gamerhack",
@@ -52,8 +50,12 @@ REPOS = {
     ),
 }
 
-PSX8_DIRS = ["505", "672", "700", "900", "1300", "1352", "css"]
-PSX8_FILES = ["index.html", "navigation.manifest", "pspulse.png", "README.md"]
+# Only 6.72 is kept: GamerHack g2all already covers 5.05 and 7.00-14.02
+# with its own self-contained chains. 6.72 is the one firmware g2all does
+# not handle ("Unsupported Firmware"), so we keep PSPulse's minimal 6.72 set.
+# Its cache manifest references ../pspulse.png, hence that file is staged too.
+PSX8_DIRS = ["672"]
+PSX8_FILES = ["pspulse.png"]
 
 GZIP_SUFFIXES = {
     ".html", ".htm", ".js", ".mjs", ".css", ".json", ".svg",
@@ -110,19 +112,6 @@ def stage_pspulse(psx8: Path, data: Path) -> None:
         src = psx8 / name
         if src.is_file():
             shutil.copy2(src, target / name)
-
-
-def stage_afterglow(afterglow: Path, data: Path) -> None:
-    target = data / "ps4" / "afterglow"
-    target.mkdir(parents=True, exist_ok=True)
-    skip = {".git", ".gitignore", ".nojekyll", "serve.sh", "make-manifest.sh"}
-    for item in afterglow.iterdir():
-        if item.name in skip or item.name == ".git":
-            continue
-        if item.is_dir():
-            copy_tree(item, target / item.name)
-        elif item.is_file():
-            shutil.copy2(item, target / item.name)
 
 
 def stage_gamerhack(gamerhack: Path, data: Path) -> None:
@@ -245,7 +234,6 @@ def main() -> int:
 
     stage_ps5(repos["ps5"], data)
     stage_pspulse(repos["pspulse"], data)
-    stage_afterglow(repos["afterglow"], data)
     stage_gamerhack(repos["gamerhack"], data)
     stage_templates(data)
     (data / "payloads").mkdir(parents=True, exist_ok=True)
