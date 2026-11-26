@@ -9,7 +9,6 @@ build/
 .cache/
 data/*
 !data/.gitkeep
-src/exfathax.h
 
 # Local tooling
 __pycache__/

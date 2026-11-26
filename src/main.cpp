@@ -7,7 +7,6 @@
 #include "dns_portal.h"
 #include "http_portal.h"
 #include "https_portal.h"
-#include "usb_msc.h"
 
 static void mountStorage()
 {
@@ -64,10 +63,6 @@ void setup()
 
     portalHttpBegin();
     portalHttpsBegin();
-
-#if PORTAL_USB_MSC && USB_MSC_EXFATHAX
-    portalUsbBegin();
-#endif
 
     Serial.println("READY");
     Serial.printf("PS5: connect to %s and open the User Guide\n", PORTAL_AP_SSID);

@@ -84,7 +84,7 @@ async function refresh() {
     document.getElementById('status').innerHTML =
       'SSID <code>' + s.ap_ssid + '</code> · IP <code>' + s.ap_ip + '</code> · 客户端 ' + s.clients +
       '<br>堆内存 <code>' + fmtSize(s.free_heap) + '</code> · LittleFS <code>' + fmtSize(s.fs_used) + ' / ' + fmtSize(s.fs_total) + '</code>' +
-      '<br>USB MSC <code>' + (s.usb_msc ? '启用' : '未启用') + '</code> · DNS 查询 <code>' + s.dns_queries + '</code>';
+      '<br>DNS 查询 <code>' + s.dns_queries + '</code>';
   } catch (e) {
     document.getElementById('status').textContent = '状态读取失败: ' + e;
   }

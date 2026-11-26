@@ -58,7 +58,6 @@ small{color:#8e9ab2}
     <h2>运行状态</h2>
     <div class="kv"><span>运行时间</span><b id="uptime">—</b></div>
     <div class="kv"><span>SDK 版本</span><b id="sdk">—</b></div>
-    <div class="kv"><span>USB MSC (exfathax)</span><b id="usb">—</b></div>
   </div>
 </div>
 
@@ -97,7 +96,6 @@ async function refresh() {
     set('fstotal', fmtSize(s.fs_total));
     set('uptime', fmtUptime(s.uptime_ms));
     set('sdk', s.sdk);
-    set('usb', s.usb_msc ? '启用' : '未启用');
 
     var heapPct = Math.round((1 - s.free_heap / s.heap_size) * 100);
     document.getElementById('heapbar').style.width = heapPct + '%';

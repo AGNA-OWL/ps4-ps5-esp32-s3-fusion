@@ -2,7 +2,6 @@
 #include "portal_common.h"
 #include "portal_config.h"
 #include "dns_portal.h"
-#include "usb_msc.h"
 
 #include <Arduino.h>
 #include <LittleFS.h>
@@ -42,8 +41,7 @@ static void handleStatus()
     json += "\"fs_used\":" + String(used) + ",";
     json += "\"fs_total\":" + String(total) + ",";
     json += "\"uptime_ms\":" + String(millis()) + ",";
-    json += "\"sdk\":\"" + portalJsonEscape(ESP.getSdkVersion()) + "\",";
-    json += "\"usb_msc\":" + String(portalUsbEnabled() ? "true" : "false");
+    json += "\"sdk\":\"" + portalJsonEscape(ESP.getSdkVersion()) + "\"";
     json += "}";
     webServer.send(200, "application/json; charset=utf-8", json);
 }

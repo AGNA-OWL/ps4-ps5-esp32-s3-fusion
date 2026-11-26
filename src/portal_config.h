@@ -22,18 +22,9 @@
 // Redirect them to plain HTTP so AppCache / WebKit does not stay on TLS.
 #define PORTAL_REDIRECT_URL   "http://192.168.4.1/"
 
-// The malformed exFAT image exposed over USB-OTG is required by the PS4 9.00
-// exfathax trigger. ESP32-S3 native USB (GPIO19/20) must be wired to the port
-// the console sees. Set to 0 to build a pure-WiFi host.
-#define PORTAL_USB_MSC        1
-
 // Routes. PS5 autoloader is served at "/", PS4 hosts live under "/ps4/".
 #define PORTAL_PS5_ROOT       "/"
 #define PORTAL_PS4_ROOT       "/ps4/"
 #define PORTAL_ADMIN_PATH     "/admin.html"
 #define PORTAL_PAYLOAD_DIR    "/payloads"
 #define PORTAL_BUILD_INFO     "/build_info.json"
-
-#ifndef USB_MSC_EXFATHAX
-#define USB_MSC_EXFATHAX 1
-#endif
