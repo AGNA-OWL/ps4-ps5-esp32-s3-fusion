@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>系统监控</title>
+<style>
+body{background:#11131a;color:#e7ecf5;font-family:system-ui,sans-serif;margin:0;padding:24px;line-height:1.6}
+h1{font-size:22px;margin:0 0 4px}
+p.sub{color:#9aa6bd;margin:0 0 20px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.panel{background:#1b2030;border:1px solid #2c3447;border-radius:12px;padding:16px}
+.panel h2{font-size:15px;margin:0 0 12px;color:#7fa9ff}
+.kv{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #242c3f;font-size:14px}
+.kv:last-child{border-bottom:0}
+.kv span:first-child{color:#9aa6bd}
+.kv b{font-weight:500}
+.bar{height:8px;background:#0c0f16;border-radius:4px;overflow:hidden;margin-top:6px}
+.bar>i{display:block;height:100%;background:#5b8cff}
+.bar.good>i{background:#4ade80}
+.bar.warn>i{background:#fbbf24}
+code{background:#0c0f16;padding:2px 6px;border-radius:4px;color:#a8e6a3}
+small{color:#8e9ab2}
+.footer{margin-top:20px}
+</style>
+</head>
+<body>
+<h1>系统监控</h1>
+<p class="sub">ESP32-S3 N16R8 融合 Portal · 每 5 秒自动刷新</p>
+
+<div class="grid">
+  <div class="panel">
+    <h2>网络</h2>
+    <div class="kv"><span>热点 SSID</span><b id="ssid">—</b></div>
+    <div class="kv"><span>本机 IP</span><b id="ip">—</b></div>
+    <div class="kv"><span>已连接客户端</span><b id="clients">—</b></div>
+    <div class="kv"><span>DNS 查询数</span><b id="dns">—</b></div>
+  </div>
+
+  <div class="panel">
+    <h2>内存</h2>
+    <div class="kv"><span>可用堆内存</span><b id="heap">—</b></div>
+    <div class="kv"><span>历史最小堆</span><b id="minheap">—</b></div>
+    <div class="kv"><span>堆总量</span><b id="heapsize">—</b></div>
+    <div class="kv"><span>PSRAM 可用 / 总量</span><b id="psram">—</b></div>
+    <div class="bar"><i id="heapbar" style="width:0"></i></div>
+  </div>
+
+  <div class="panel">
+    <h2>存储</h2>
+    <div class="kv"><span>Flash 容量</span><b id="flash">—</b></div>
+    <div class="kv"><span>LittleFS 已用</span><b id="fsused">—</b></div>
+    <div class="kv"><span>LittleFS 总量</span><b id="fstotal">—</b></div>
+    <div class="bar" id="fsbarwrap"><i id="fsbar" style="width:0"></i></div>
+  </div>
+
+  <div class="panel">
+    <h2>运行状态</h2>
+    <div class="kv"><span>运行时间</span><b id="uptime">—</b></div>
+    <div class="kv"><span>SDK 版本</span><b id="sdk">—</b></div>
+    <div class="kv"><span>USB MSC (exfathax)</span><b id="usb">—</b></div>
+  </div>
+</div>
+
+<div class="footer">
+  <p><small><a href="/portal.html">门户首页</a> · <a href="/admin.html">payload 升级 / 管理</a> · <a href="/">PS5 触发页</a> · <a href="/ps4/">PS4 入口</a></small></p>
+</div>
+
+<script>
+function fmtSize(n) {
+  if (n >= 1048576) return (n/1048576).toFixed(2) + ' MB';
+  if (n >= 1024) return (n/1024).toFixed(1) + ' KB';
+  return n + ' B';
+}
+function fmtUptime(ms) {
+  var s = Math.floor(ms/1000);
+  var d = Math.floor(s/86400); s -= d*86400;
+  var h = Math.floor(s/3600); s -= h*3600;
+  var m = Math.floor(s/60); s -= m*60;
+  return (d?d+'天 ':'') + h + '小时 ' + m + '分 ' + s + '秒';
+}
+function set(id, v) { document.getElementById(id).textContent = v; }
+
+async function refresh() {
+  try {
+    const s = await (await fetch('/api/status')).json();
+    set('ssid', s.ap_ssid);
+    set('ip', s.ap_ip);
+    set('clients', s.clients);
+    set('dns', s.dns_queries);
+    set('heap', fmtSize(s.free_heap));
+    set('minheap', fmtSize(s.min_free_heap));
+    set('heapsize', fmtSize(s.heap_size));
+    set('psram', fmtSize(s.free_psram) + ' / ' + fmtSize(s.psram_size));
+    set('flash', fmtSize(s.flash_size));
+    set('fsused', fmtSize(s.fs_used));
+    set('fstotal', fmtSize(s.fs_total));
+    set('uptime', fmtUptime(s.uptime_ms));
+    set('sdk', s.sdk);
+    set('usb', s.usb_msc ? '启用' : '未启用');
+
+    var heapPct = Math.round((1 - s.free_heap / s.heap_size) * 100);
+    document.getElementById('heapbar').style.width = heapPct + '%';
+    document.getElementById('heapbar').parentElement.className = 'bar ' + (heapPct > 80 ? 'warn' : 'good');
+
+    var fsPct = Math.round(s.fs_used / s.fs_total * 100);
+    document.getElementById('fsbar').style.width = fsPct + '%';
+    document.getElementById('fsbar').parentElement.className = 'bar ' + (fsPct > 90 ? 'warn' : 'good');
+  } catch (e) {
+    set('ip', '读取失败: ' + e);
+  }
+}
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>

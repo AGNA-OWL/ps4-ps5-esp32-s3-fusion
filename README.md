@@ -4,11 +4,11 @@
 
 - Wi‑Fi 热点 + 通配符 DNS 劫持
 - HTTP（80）+ HTTPS（443）静态站点
-- PS5 WebKit Autoloader（用户指南入口）
-- PS4 PSPulse 多固件页面（5.05 / 6.72 / 7.00 / 9.00 / 13.00 / 13.52）
-- PS4 Afterglow 页面（12.00 – 14.02）
+- PS5 WebKit Autoloader（用户指南入口，自动识别固件）
+- **PS4 一键破解**（GamerHack g2all）：打开 `/ps4/` 自动识别系统版本并加载对应漏洞（5.05 / 7.00–14.02），无需手动选择
+- PS4 PSPulse / Afterglow 页面保留作手动兜底
 - PS4 9.00 所需的 exfathax USB 大容量存储模拟（ESP32-S3 USB‑OTG）
-- 网页管理端：上传 payload、查看状态、重启
+- 网页管理端：系统监控、payload 升级（无需重烧固件）、重启
 
 > 这是**临时越狱 /  exploits 本地托管**，不是给 PS4/PS5 刷写官方系统固件。主机重启后需要重新触发。
 
@@ -31,14 +31,15 @@
 
 | 主机 | 版本 | 入口 | 说明 |
 |---|---|---|---|
-| PS5 | 7.00 – 13.60（Poops / Relapse） | 用户指南 → 本机 HTTPS | 与上游 autoloader 一致；9.05 只能用 Poops |
-| PS4 | 5.05 / 6.72 / 7.00 | `/ps4/pspulse/<版本>/index.html` | 纯 WebKit 链 |
-| PS4 | 9.00 | `/ps4/pspulse/900/index.html` | 需要 USB exfathax，本工程开机即模拟 |
-| PS4 | 13.00 / 13.52 | `/ps4/pspulse/<版本>/index.html` | PSPulse 页面 |
-| PS4 | 12.00 – 14.02 | `/ps4/afterglow/index.html` | 选与系统版本对应的 patchset |
-| PS4 | 9.60 / 10.00 / 10.01 / 11.00 | 不支持 | 这些走 PPPwn（网线 PPPoE），不是 WiFi 网页方案 |
+| PS5 | 7.00 – 13.60（Poops / Relapse） | 用户指南 → 本机 `/` | 自动识别固件；9.05 只能用 Poops |
+| PS4 | 5.05 / 5.07 | `/ps4/` → 自动跳转 | 首次加载会把缓存装入主机 |
+| PS4 | 7.00 – 8.52 | `/ps4/` → 自动跳转 | psfree + lapse 链 |
+| PS4 | 9.00 – 9.60 | `/ps4/` → 自动跳转 | 9.00 需 USB exfathax，本工程开机即模拟 |
+| PS4 | 10.00 – 11.02 | `/ps4/` → 自动跳转 | ChendoChap CSS 内核漏洞 |
+| PS4 | 11.50 – 14.02 | `/ps4/` → 自动跳转 | slopkit / Afterglow 链 |
+| PS4 | 9.60 / 10.00 / 10.01 / 11.00 | 见上（g2all 区间覆盖） | 这些版本 g2all 可处理；旧 PSPulse 方案走 PPPwn |
 
-**每个版本必须选对应页面**，选错不会生效，也不会降级主机。
+**打开 `/ps4/` 即自动识别**：入口页读取主机 User-Agent 里的系统版本，跳到对应漏洞链。首次会把文件装入主机离线缓存，按提示关闭浏览器、断开网络再打开即可触发。手动入口仍保留在 `/ps4/pspulse/` 和 `/ps4/afterglow/`。
 
 ---
 
@@ -58,7 +59,7 @@ ps4-ps5-s3-fusion/
 │   ├── usb_msc.*               # exfathax USB MSC（9.00）
 │   ├── server_certs.h          # 生成的自签名证书
 │   └── exfathax.h              # 由 stage 脚本从上游生成，不入库
-├── templates/                  # 自写的 PS4 选择页 / 管理页
+├── templates/                  # 自写的门户 / PS4 入口 / 监控 / 管理页
 ├── tools/
 │   ├── stage_payloads.py       # 拉取 + 裁剪 + gzip 上游主机文件
 │   └── gen_certs.py            # 生成自签名证书头文件
@@ -90,7 +91,7 @@ python3 tools/stage_payloads.py --update
 ```
 
 脚本会克隆四个浅仓库到 `.cache/`，把静态文件放进 `data/`，对文本/payload 做 gzip（原文件删除），并生成 `src/exfathax.h`。
-当前打包体积约 **6.5 MiB**，远小于 12.94 MiB 的 LittleFS 分区。
+当前打包体积约 **7.7 MiB**，远小于 12.94 MiB 的 LittleFS 分区。
 
 ### 4.4 烧录
 
@@ -103,7 +104,7 @@ pio run -t upload      # 上传固件
 
 也可以用网页烧录器刷入 `merge_bin` 后的整片镜像（自行用 esptool 合并 bootloader / partitions / app / littlefs）。
 
-本地已用 PlatformIO 6.2.0 + `espressif32@6.7.0` 编译验证通过：固件约 **965 KB / 1.5 MB**，LittleFS 镜像按分区填满 **13 MB**，数据实际占用约 6.5 MB。
+本地已用 PlatformIO 6.2.0 + `espressif32@6.7.0` 编译验证通过：固件约 **968 KB / 1.5 MB**，LittleFS 镜像按分区填满 **13 MB**，数据实际占用约 7.7 MB。
 
 > Windows 用户名含中文时，PlatformIO 可能因为工具链路径编码报 `Arduino.h: No such file or directory`。
 > 建议把 core 目录（默认在 `%USERPROFILE%\.platformio`，工具链缓存约 4 GB）整体放到 D 盘的纯 ASCII 路径，
@@ -127,32 +128,33 @@ pio run -t upload      # 上传固件
    - SSID：`PS4_PS5_PORTAL`
    - 密码：`12345678`
 3. 按需访问：
-   - **PS5**：打开「用户指南」（DNS 已把 `manuals.playstation.net` 指到 ESP32），加载 WebKit Autoloader，按页面提示安装快捷方式。
-   - **PS4**：用浏览器打开 `http://192.168.4.1/ps4/`，选择对应固件页面。
-   - **PS4 9.00**：选择 9.00 页面；USB‑OTG 口已模拟 exfathax 设备，把它插到主机 USB 口。
-4. 管理页面：`http://192.168.4.1/admin.html`
+   - **PS5**：打开「用户指南」（DNS 已把 `manuals.playstation.net` 指到 ESP32），自动识别固件并按提示安装快捷方式。
+   - **PS4**：浏览器打开 `http://192.168.4.1/ps4/`，**自动识别系统版本**并加载对应漏洞，无需手动选择。
+   - **PS4 9.00**：USB‑OTG 口已模拟 exfathax 设备，把它插到主机 USB 口即可。
+4. 电脑浏览器可访问门户与维护页（见下表）。
 
 ### 主要路由
 
 | 路径 | 用途 |
 |---|---|
-| `/` | PS5 WebKit Autoloader |
-| `/ps4/` | PS4 固件选择页 |
-| `/ps4/pspulse/` | PSPulse 固件选择器 |
-| `/ps4/pspulse/900/index.html` | PS4 9.00（USB 触发） |
-| `/ps4/afterglow/` | Afterglow 12.00 – 14.02 |
-| `/admin.html` | 管理页 |
+| `/` | PS5 WebKit Autoloader（用户指南入口，自动识别固件） |
+| `/portal.html` | 简洁门户首页（PS5 / PS4 / 监控 / 升级） |
+| `/ps4/` | **PS4 一键入口**：自动识别固件 → g2all 对应漏洞链 |
+| `/ps4/g2all/` | GamerHack g2all 自动识别主机（5.05 / 7.00–14.02） |
+| `/ps4/pspulse/`、`/ps4/afterglow/` | 手动兜底入口 |
+| `/status.html` | 系统监控（AP 客户端、内存、PSRAM、LittleFS、运行时间） |
+| `/admin.html` | 破解程序升级 / payload 管理 / 重启 |
 | `/api/status` | 运行状态 JSON |
 | `/api/files` | 可替换 payload 列表（全盘扫描 `.bin` / `.elf` / PS5 `.js`） |
 | `/upload?path=...` / `/delete` / `/reboot` | 管理 API（POST） |
 
-管理页会列出固件里所有可替换的 payload（GoldHEN、各固件补丁、PS5 autoloader 等）。选中目标后上传新的原始文件即可覆盖对应路径，旧的 gzip 缓存会自动清除，下次触发漏洞时主机直接加载新文件——**无需重新烧录固件**。请务必选对与主机固件匹配的路径；上传的文件不会自动校验内容，用错 payload 会导致触发失败。
+**升级破解程序**：管理页会列出固件里所有可替换的 payload（GoldHEN、g2all 的 `goldhen_2.4b18.14.bin`、各固件补丁、PS5 autoloader 等）。选中目标后上传新的原始文件即可覆盖对应路径，旧的 gzip 缓存会自动清除，下次触发漏洞时主机直接加载新文件——**无需重新烧录固件**。请务必选对与主机固件匹配的路径；上传的文件不会自动校验内容，用错 payload 会导致触发失败。
 
 ---
 
 ## 6. 已知限制
 
-- **PPPwn 不在范围内**：9.60 / 10.x / 11.00 需要网线 PPPoE，不是访问网页。
+- **g2all 的区间覆盖**：10.00–11.02 走 ChendoChap CSS 内核漏洞，11.50–14.02 走 slopkit；9.60、10.01、11.00 等具体小版本以 g2all 的 User-Agent 判定为准。传统 PPPwn（网线 PPPoE）方案不在本WiFi托管范围内。
 - 越狱不持久；主机重启后重新触发。
 - 高版本页面可能失败，WebKit 漏洞本身有成功率，不是 100%。
 - DNS 是通配符劫持：连接热点的设备所有域名都会被指到 ESP32；请仅用于离线测试。
@@ -171,6 +173,7 @@ pio run -t upload      # 上传固件
 - [percdotdev/ps5-webkit-autoloader-esp32](https://github.com/percdotdev/ps5-webkit-autoloader-esp32) — PS5 autoloader host
 - [psx8/psx8.github.io](https://github.com/psx8/psx8.github.io) — PSPulse PS4 host 与 payload
 - [well0nez/afterglow-web](https://github.com/well0nez/afterglow-web) — Afterglow host（AGPL-3.0）
+- [GamerHack/GamerHack.github.io](https://github.com/GamerHack/GamerHack.github.io) — g2all 多固件自动识别入口（仓库未声明许可证，请自行确认再分发条款）
 - [doj/ESP32-Server-900u](https://github.com/doj/ESP32-Server-900u) — exfathax USB 数据结构
 
 发布包含上游资源的固件镜像前，请自行确认各上游项目的再分发条款。

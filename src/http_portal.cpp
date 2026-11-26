@@ -34,9 +34,15 @@ static void handleStatus()
     json += "\"clients\":" + String(WiFi.softAPgetStationNum()) + ",";
     json += "\"dns_queries\":" + String(portalDns.queries()) + ",";
     json += "\"free_heap\":" + String(ESP.getFreeHeap()) + ",";
+    json += "\"min_free_heap\":" + String(ESP.getMinFreeHeap()) + ",";
+    json += "\"heap_size\":" + String(ESP.getHeapSize()) + ",";
+    json += "\"psram_size\":" + String(ESP.getPsramSize()) + ",";
+    json += "\"free_psram\":" + String(ESP.getFreePsram()) + ",";
     json += "\"flash_size\":" + String(ESP.getFlashChipSize()) + ",";
     json += "\"fs_used\":" + String(used) + ",";
     json += "\"fs_total\":" + String(total) + ",";
+    json += "\"uptime_ms\":" + String(millis()) + ",";
+    json += "\"sdk\":\"" + portalJsonEscape(ESP.getSdkVersion()) + "\",";
     json += "\"usb_msc\":" + String(portalUsbEnabled() ? "true" : "false");
     json += "}";
     webServer.send(200, "application/json; charset=utf-8", json);

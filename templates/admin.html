@@ -3,48 +3,68 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>融合 Portal 管理</title>
+<title>破解程序升级 / 管理</title>
 <style>
-body{background:#11131a;color:#e7ecf5;font-family:system-ui,sans-serif;margin:0;padding:24px;line-height:1.6}
-h1{font-size:22px} h2{font-size:17px;margin-top:26px}
-.panel{background:#1b2030;border:1px solid #2c3447;border-radius:12px;padding:16px;margin-bottom:16px}
+body{background:#11131a;color:#e7ecf5;font-family:system-ui,sans-serif;margin:0;padding:24px;line-height:1.6;max-width:960px;margin-left:auto;margin-right:auto}
+h1{font-size:22px;margin:0 0 4px}
+h2{font-size:17px;margin-top:0}
+p.sub{color:#9aa6bd;margin:0 0 20px}
+.panel{background:#1b2030;border:1px solid #2c3447;border-radius:12px;padding:18px;margin-bottom:16px}
 button,input,select{font:inherit;padding:8px 12px;border-radius:8px;border:1px solid #3a445c;background:#242c3f;color:#e7ecf5}
 button{cursor:pointer;background:#3159a8;border-color:#4b79d0;margin-left:6px}
 button:hover{background:#3c6ac5}
 button.danger{background:#8a3040;border-color:#b84a5e}
 code{background:#0c0f16;padding:2px 6px;border-radius:4px;color:#a8e6a3}
 small{color:#9aa6bd}
-table{border-collapse:collapse;width:100%} td,th{border-bottom:1px solid #2c3447;padding:6px;text-align:left}
+table{border-collapse:collapse;width:100%} td,th{border-bottom:1px solid #2c3447;padding:6px;text-align:left;font-size:13px}
 tr:hover td{background:#222a3c}
-.note{background:#2a2410;border:1px solid #5a4a1c;border-radius:8px;padding:10px 12px;color:#e8d9a0}
+.note{background:#12261f;border:1px solid #2c5a48;border-radius:8px;padding:10px 12px;color:#a8e6c9;margin-bottom:12px}
+.warn{background:#2a2410;border:1px solid #5a4a1c;border-radius:8px;padding:10px 12px;color:#e8d9a0;margin-bottom:12px}
+.steps{counter-reset:s;margin:0;padding:0;list-style:none}
+.steps li{position:relative;padding:6px 0 6px 34px}
+.steps li:before{counter-increment:s;content:counter(s);position:absolute;left:0;top:6px;width:22px;height:22px;background:#3159a8;border-radius:50%;text-align:center;line-height:22px;font-size:13px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
 #status{font-size:14px}
+.links a{color:#7fa9ff;margin-right:14px}
 </style>
 </head>
 <body>
-<h1>融合 Portal 管理</h1>
-<p class="small">仅用于本机维护。本页管理的是 ESP32 板子本身，不影响主机破解流程。</p>
+<h1>破解程序升级 / 管理</h1>
+<p class="sub">本页管理 ESP32 板子本身，不影响主机破解流程。</p>
 
-<div class="panel" id="status">加载状态中…</div>
+<div class="panel links">
+  <a href="/portal.html">门户首页 →</a>
+  <a href="/status.html">系统监控 →</a>
+  <a href="/">PS5 触发页</a>
+  <a href="/ps4/">PS4 入口</a>
+</div>
 
 <div class="panel">
-<h2 style="margin-top:0">替换 payload</h2>
+<h2>升级破解程序（无需重烧固件）</h2>
 <div class="note">
-上传的文件会<strong>覆盖选中的 payload 路径</strong>，下次触发漏洞时主机就会加载新文件，<strong>无需重新烧录固件</strong>。
-请选择与目标主机/固件对应的正确 payload（例如 PS4 9.00 选 <code>/ps4/pspulse/900/goldhen.bin</code>）。
-上传的是原始文件，不需要 gzip —— 旧的压缩缓存会被自动清除。
+把新版 payload 文件上传到板子，覆盖对应的内置文件。下次主机触发漏洞时会直接加载新文件，<strong>不需要重新烧录 ESP32 固件</strong>。
+上传原始文件即可，旧的 gzip 缓存会自动清除。
 </div>
-<form id="uploadForm" style="margin-top:12px">
-<label>目标 payload：<br>
-<select name="path" id="payloadSelect" style="width:100%;margin:8px 0"></select>
-</label>
+<ol class="steps">
+<li>在下方「目标 payload」中选择要升级的文件（例如 PS4 9.00 选 <code>/ps4/pspulse/900/goldhen.bin</code>；PS5 选 <code>/app/0.8.4/payloads/autoloader.js</code>）。</li>
+<li>点击「选择文件」挑选下载好的新版 payload。</li>
+<li>点击「上传替换」，确认后在主机上重新触发一次漏洞即可生效。</li>
+</ol>
+<form id="uploadForm" class="row" style="margin-top:14px">
+<select name="path" id="payloadSelect" style="flex:1;min-width:240px"></select>
 <input type="file" name="payload" id="payloadFile" required>
 <button type="submit">上传替换</button>
 </form>
 </div>
 
 <div class="panel">
-<h2 style="margin-top:0">当前 payload 列表</h2>
-<p class="small" id="fileCount"></p>
+<h2>设备状态</h2>
+<div id="status">加载中…</div>
+</div>
+
+<div class="panel">
+<h2>全部可替换 payload <small id="fileCount"></small></h2>
+<div class="warn">高级选项：列表里是板子上所有可替换的 payload。普通升级只需在上方选择即可，无需在此操作。</div>
 <table id="fileTable"><thead><tr><th>路径</th><th>大小</th><th>存储</th><th></th></tr></thead><tbody></tbody></table>
 </div>
 
@@ -54,7 +74,6 @@ tr:hover td{background:#222a3c}
 
 <script>
 let payloads = [];
-
 function fmtSize(n) {
   return n >= 1048576 ? (n/1048576).toFixed(2)+' MB' : (n/1024).toFixed(1)+' KB';
 }
@@ -64,7 +83,7 @@ async function refresh() {
     const s = await (await fetch('/api/status')).json();
     document.getElementById('status').innerHTML =
       'SSID <code>' + s.ap_ssid + '</code> · IP <code>' + s.ap_ip + '</code> · 客户端 ' + s.clients +
-      '<br>堆内存 <code>' + s.free_heap + '</code> B · 文件系统 <code>' + s.fs_used + '/' + s.fs_total + '</code> B' +
+      '<br>堆内存 <code>' + fmtSize(s.free_heap) + '</code> · LittleFS <code>' + fmtSize(s.fs_used) + ' / ' + fmtSize(s.fs_total) + '</code>' +
       '<br>USB MSC <code>' + (s.usb_msc ? '启用' : '未启用') + '</code> · DNS 查询 <code>' + s.dns_queries + '</code>';
   } catch (e) {
     document.getElementById('status').textContent = '状态读取失败: ' + e;
@@ -86,24 +105,20 @@ async function refresh() {
     tbody.innerHTML = '';
     payloads.forEach(f => {
       const tr = document.createElement('tr');
-      const td = document.createElement('td');
-      td.textContent = f.path;
-      const sz = document.createElement('td');
-      sz.textContent = fmtSize(f.size);
-      const st = document.createElement('td');
-      st.textContent = f.gzip ? 'gzip' : '原始';
+      const td = document.createElement('td'); td.textContent = f.path;
+      const sz = document.createElement('td'); sz.textContent = fmtSize(f.size);
+      const st = document.createElement('td'); st.textContent = f.gzip ? 'gzip' : '原始';
       const act = document.createElement('td');
       const btn = document.createElement('button');
-      btn.textContent = '删除';
-      btn.className = 'danger';
+      btn.textContent = '删除'; btn.className = 'danger';
       btn.onclick = () => removePayload(f.path);
       act.appendChild(btn);
       tr.appendChild(td); tr.appendChild(sz); tr.appendChild(st); tr.appendChild(act);
       tbody.appendChild(tr);
     });
-    document.getElementById('fileCount').textContent = '共 ' + payloads.length + ' 个可替换 payload';
+    document.getElementById('fileCount').textContent = '（共 ' + payloads.length + ' 个）';
   } catch (e) {
-    document.getElementById('fileCount').textContent = 'payload 列表读取失败: ' + e;
+    document.getElementById('fileCount').textContent = '列表读取失败: ' + e;
   }
 }
 

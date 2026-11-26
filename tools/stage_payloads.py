@@ -9,6 +9,7 @@ Sources:
   PS5 autoloader : percdotdev/ps5-webkit-autoloader-esp32 (host/packed)
   PS4 PSPulse    : psx8/psx8.github.io
   PS4 Afterglow  : well0nez/afterglow-web
+  PS4 multi-FW   : GamerHack/GamerHack.github.io (g2all auto-detect host)
   PS4 9.00 USB   : doj/ESP32-Server-900u (exfathax.h only)
 """
 from __future__ import annotations
@@ -40,6 +41,10 @@ REPOS = {
     "afterglow": (
         "https://github.com/well0nez/afterglow-web.git",
         "afterglow-web",
+    ),
+    "gamerhack": (
+        "https://github.com/GamerHack/GamerHack.github.io.git",
+        "gamerhack",
     ),
     "exfathax": (
         "https://github.com/doj/ESP32-Server-900u.git",
@@ -120,11 +125,41 @@ def stage_afterglow(afterglow: Path, data: Path) -> None:
             shutil.copy2(item, target / item.name)
 
 
+def stage_gamerhack(gamerhack: Path, data: Path) -> None:
+    """Stage GamerHack's g2all auto-detect host as the unified PS4 entry.
+
+    g2all reads the PS4 firmware from navigator.userAgent and loads the right
+    exploit chain (5.05, 7.00-8.52, 9.00-9.60, 10.00-11.02, 11.50-14.02).
+    Its manifests use Windows backslashes and reference ../style.css and
+    ../img.jpg, so normalize paths and stage those two files in data/ps4/.
+    """
+    src = gamerhack / "g2all"
+    if not src.is_dir():
+        raise SystemExit(f"missing g2all path: {src}")
+    target = data / "ps4" / "g2all"
+    copy_tree(src, target)
+
+    # Manifests must use forward slashes for the HTTP server.
+    for manifest in target.glob("*.manifest"):
+        text = manifest.read_text(encoding="utf-8", errors="replace")
+        manifest.write_text(text.replace("\\", "/"), encoding="utf-8")
+
+    # g2all pages reference ../style.css and ../img.jpg from inside g2all/.
+    for name in ("style.css", "img.jpg"):
+        upstream = gamerhack / name
+        if upstream.is_file():
+            shutil.copy2(upstream, data / "ps4" / name)
+
+
 def stage_templates(data: Path) -> None:
     templates = ROOT / "templates"
     (data / "ps4").mkdir(parents=True, exist_ok=True)
+    # /ps4/ is our own landing page; it detects the console and forwards to
+    # /ps4/g2all/index.html (relative resources there stay intact).
     shutil.copy2(templates / "ps4_index.html", data / "ps4" / "index.html")
     shutil.copy2(templates / "admin.html", data / "admin.html")
+    shutil.copy2(templates / "status.html", data / "status.html")
+    shutil.copy2(templates / "portal.html", data / "portal.html")
 
 
 def stage_exfathax(ps4_900u: Path) -> None:
@@ -211,6 +246,7 @@ def main() -> int:
     stage_ps5(repos["ps5"], data)
     stage_pspulse(repos["pspulse"], data)
     stage_afterglow(repos["afterglow"], data)
+    stage_gamerhack(repos["gamerhack"], data)
     stage_templates(data)
     (data / "payloads").mkdir(parents=True, exist_ok=True)
     (data / "payloads" / ".gitkeep").write_text("", encoding="utf-8")
